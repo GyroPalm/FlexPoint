@@ -1,7 +1,7 @@
 /*************************************************** 
 GyroPalm Encore - FlexPoint Dynamic Interface
 Written by Dominick Lee for GyroPalm LLC.
-Last Revised 12/13/2023.
+Last Revised 12/19/2023.
 
 This library is offered internally as a part of GyroPalm's developer kit.
 Unless you have written permission from GyroPalm, the code is NOT intended for commercial use.
@@ -53,6 +53,15 @@ USAGE:
     }
 8. On every "case" in void showApp(int page), add this before the form[curScreen].showScreen function:
     flexPointInterface(&form[curScreen]);
+9. (optional) Call flexPointRapid() in your onShake() gesture callback if you want to keep FlexPoint active onShake:
+    gplm.setShakeCallback(onShake);
+    gplm.setMaxShakes(5); 
+    void onShake(int numShakes)
+    {
+        if (numShakes >= 5) {
+            flexPointRapid();
+        }
+    }
 You would treat the above like adding an LVGL widget.
 ****************************************************/
 
@@ -71,6 +80,7 @@ bool enableFuzzySelector = false;
 bool fpLineHidden = true;
 bool fpAdjustMode = false;
 long fpAdjustStarted = 0;
+bool fpRapidEnabled = false;
 
 // For rolling window
 typedef struct {
@@ -259,7 +269,7 @@ void lv_fuzzyGest_task(struct _lv_task_t *data) {
         }
     }
     //Handle fpAdjustMode
-    if (fpAdjustMode && (millis() - fpAdjustStarted) > 5000) {
+    if (fpAdjustMode && (millis() - fpAdjustStarted) > 5000) {  //Adjustmode timeout
         fpAdjustMode = false;
         flexPointVibrate = true;
     }
@@ -315,22 +325,41 @@ void flexPointSnap()
             if (cb) {
                 cb(lastSelWidget, LV_EVENT_VALUE_CHANGED);
             }
+            
+            if (fpRapidEnabled) {
+                _fpGPLM->setActive(true);  // Reset timeout. Keep active for next selection
+            } else {
+                _fpGPLM->setActive(false);  // Action completed, redeem activation
+            }
         } 
         else if (isWidgetSlider(lastSelWidget)) {
-            startfpAdjustMode();    // Adjusting a slider using gesture
+            if (fpAdjustMode == false) {
+                startfpAdjustMode();    // Adjusting a slider using gesture
+            }
         }
         else {
             // Send a clicked event for other widget types
             lv_event_send(lastSelWidget, LV_EVENT_CLICKED, NULL);
+            
+            if (fpRapidEnabled) {
+                _fpGPLM->setActive(true);  // Reset timeout. Keep active for next selection
+            } else {
+                _fpGPLM->setActive(false);  // Action completed, redeem activation
+            }
         }
         
         lv_disp_trig_activity(NULL);    //trigger user activity
-        _fpGPLM->setActive(false);  // Action completed, redeem activation
     }
 
-    if (fpAdjustMode && millis() - fpAdjustStarted > 300) { // if user snaps to disable adjust mode
+    if (fpAdjustMode && millis() - fpAdjustStarted > 200) { // if user snaps to disable adjust mode
         fpAdjustMode = false;
         flexPointVibrate = true;
+        
+        if (fpRapidEnabled) {
+            _fpGPLM->setActive(true);  // Reset timeout. Keep active for next selection
+        } else {
+            _fpGPLM->setActive(false);  // Action completed, redeem activation
+        }
     }
 }
 
@@ -348,8 +377,22 @@ void flexPointLoop()
     }
 }
 
-void flexPointShow(bool isEnabled) {
+void flexPointShow(bool isEnabled) 
+{
     enableFuzzySelector = isEnabled;
     lv_obj_set_hidden(fpLine1, !isEnabled);
     fpLineHidden = !isEnabled;
+    
+    if (isEnabled == false) {
+        fpRapidEnabled = false;
+    }
+}
+
+void flexPointRapid()
+{
+    if (_fpGPLM->isActive) {
+        fpRapidEnabled = true;
+        flexPointVibrate = true;
+        _fpGPLM->setActive(true);  // Reset timeout. Keep active for next selection
+    }
 }
