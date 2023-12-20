@@ -1,6 +1,8 @@
 # GyroPalm FlexPoint
 Control LVGL interfaces using Euclidean Ray-Casting and advanced techniques
 
+![](https://raw.githubusercontent.com/GyroPalm/GyroPalm-FlexPoint/master/img/FlexPoint_demo.gif)
+
 ## Overview
 
 As part of GyroPalm's patented technology, GyroPalm provides developers with many different hands-free mechanisms for unparalleled gesture control. Elements on the screen of GyroPalm Encore such as LVGL buttons, checkboxes, and sliders can be manipulated with gestures, enabling any user to interact without specific gesture learning nor custom gesture programming.
